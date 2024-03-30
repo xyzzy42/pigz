@@ -411,6 +411,7 @@
 #ifdef __MINGW32__
 #  define chown(p,o,g) 0
 #  define utimes(p,t)  0
+#  define utimensat(d,p,t,f) 0
 #  define lstat(p,s)   stat(p,s)
 #  define _exit(s)     exit(s)
 #endif
@@ -3856,7 +3857,7 @@ local char *justname(char *path) {
 // if allowed), and the access and modify times are copied.
 local int copymeta(char *from, char *to) {
     struct stat st;
-    struct timeval times[2];
+    struct timespec times[2];
 
     // get all of from's Unix meta data, return if not a regular file
     if (stat(from, &st) != 0 || (st.st_mode & S_IFMT) != S_IFREG)
@@ -3869,11 +3870,9 @@ local int copymeta(char *from, char *to) {
     ret += chown(to, st.st_uid, st.st_gid);
 
     // copy access and modify times, ignore errors
-    times[0].tv_sec = st.st_atime;
-    times[0].tv_usec = 0;
-    times[1].tv_sec = st.st_mtime;
-    times[1].tv_usec = 0;
-    ret += utimes(to, times);
+    times[0] = st.st_atim;
+    times[1] = st.st_mtim;
+    ret += utimensat(AT_FDCWD, to, times, 0);
     return ret;
 }
 
